@@ -58,7 +58,9 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "model_loaded": model is not None}
+    if model is None:
+        raise HTTPException(status_code=503, detail="Modèle indisponible")
+    return {"status": "healthy", "model_loaded": True}
 
 
 @app.get("/metrics")

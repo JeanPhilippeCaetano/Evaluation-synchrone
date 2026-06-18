@@ -22,6 +22,14 @@ def test_health_endpoint():
     assert response.json()["status"] == "healthy"
 
 
+def test_health_endpoint_no_model(monkeypatch):
+    monkeypatch.setattr(api_app, "model", None)
+    response = client.get("/health")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Modèle indisponible"
+
+
 def test_predict_valid_input(monkeypatch):
     monkeypatch.setattr(api_app, "model", DummyModel())
     monkeypatch.setattr(
