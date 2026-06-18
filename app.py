@@ -64,7 +64,9 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "model_loaded": model is not None}
+    if model is None:
+        raise HTTPException(status_code=503, detail="Modèle indisponible")
+    return {"status": "healthy", "model_loaded": True}
 
 
 @app.get("/metrics")
@@ -97,44 +99,4 @@ def predict(payload: CustomerInput, api_key: str = Depends(verify_token)):
     except Exception as e:
         metrics["n_errors"] += 1
         logger.error("Erreur pendant la prédiction : %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/predict_batch")
-def predict_batch(payload: BatchInput):
-    if len(payload.inputs) > 100:
-        logger.warning("Batch rejeté : %d entrées soumises (max 100)", len(payload.inputs))
-        raise HTTPException(
-            status_code=413,
-            detail=f"Batch trop volumineux : {len(payload.inputs)} entrées (max 100)",
-        )
-
-    if model is None:
-        metrics["n_errors"] += 1
-        raise HTTPException(status_code=500, detail="Modèle indisponible")
-
-    predictions = []
-    try:
-        for i, item in enumerate(payload.inputs):
-            df = pd.DataFrame([item.model_dump()])
-            df_encoded = pd.get_dummies(df, drop_first=True)
-            df_aligned = df_encoded.reindex(columns=feature_columns, fill_value=0)
-
-            prediction = model.predict(df_aligned)[0]
-            confidence = model.predict_proba(df_aligned)[0].max()
-
-            predictions.append({
-                "prediction": int(prediction),
-                "label": "churn" if prediction == 1 else "no_churn",
-                "confidence": float(confidence),
-            })
-
-        metrics["n_batch_requests"] += 1
-        metrics["n_batch_inputs_total"] += len(payload.inputs)
-        logger.info("predict_batch: %d entrées traitées", len(payload.inputs))
-
-        return {"predictions": predictions, "n_inputs": len(payload.inputs)}
-    except Exception as e:
-        metrics["n_errors"] += 1
-        logger.error("Erreur pendant predict_batch (entrée %d) : %s", i, e)
-        raise HTTPException(status_code=500, detail=f"Erreur à l'entrée {i} : {e}")
+        raise HTTPException(status_code=500, detail="Une erreur interne est survenue pendant la prédiction.")
