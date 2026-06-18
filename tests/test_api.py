@@ -42,14 +42,22 @@ def test_predict_valid_input(monkeypatch):
         "total_charges": 906.0,
         "contract": "Month-to-month",
     }
-    response = client.post("/predict", json=payload)
+    response = client.post(
+        "/predict",
+        json=payload,
+        headers={"X-API-Key": "churn-demo-token"}
+    )
 
     assert response.status_code == 200
     assert "prediction" in response.json()
 
 
 def test_predict_rejects_missing_field():
-    response = client.post("/predict", json={"tenure_months": 12})
+    response = client.post(
+        "/predict",
+        json={"tenure_months": 12},
+        headers={"X-API-Key": "churn-demo-token"}
+    )
 
     assert response.status_code == 422
 
