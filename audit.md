@@ -48,3 +48,27 @@ Identification des défauts liés au MLops
 **Description** : Le workflow exécute l'entraînement du modèle, ce qui est très long (plusieurs minutes).
 
 **Niveau de criticité** : Haute (L'entraînement du modèle devrait être exécuté dans le CD et non dans le CI. Le CI devrait seulement vérifier que le code est valide.)
+
+# Défaut 7 - Environnement
+
+**Localisation** : requirements.txt
+
+**Description** : Les versions des bibliothèques ne sont pas fixées. 
+
+**Niveau de criticité** : Basse (Risque que le code ne fonctionne plus si une bibliothèque fait une mise à jour incompatible.)
+
+# Défaut 8 - Manque de documentation
+
+**Localisation** : README.md
+
+**Description** : Le README.md est très sommaire et ne contient pas d'instructions claires sur la manière d'installer et d'exécuter le projet.
+
+**Niveau de criticité** : Basse (Le projet est simple, mais une meilleure documentation améliorerait l'expérience utilisateur.)
+
+# Défaut 9 - Confidentialité 
+
+**Localisation** : .gitignore
+
+**Description** : Le fichier .gitignore n'ignore pas le dossier data donc il va envoyer toutes les données dans le répertoire GitHub.
+
+**Niveau de criticité** : Haute (cela peut exposer des données sensibles comme des informations personnelles.)
