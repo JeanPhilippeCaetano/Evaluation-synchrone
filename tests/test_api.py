@@ -15,7 +15,8 @@ class DummyModel:
 client = TestClient(api_app.app)
 
 
-def test_health_endpoint():
+def test_health_endpoint(monkeypatch):
+    monkeypatch.setattr(api_app, "model", DummyModel())
     response = client.get("/health")
 
     assert response.status_code == 200
@@ -94,7 +95,7 @@ def test_predict_batch_valid(monkeypatch):
     monkeypatch.setattr(api_app, "model", DummyModel())
     monkeypatch.setattr(api_app, "feature_columns", FEATURE_COLS)
 
-    response = client.post("/predict_batch", json=BATCH_PAYLOAD)
+    response = client.post("/predict_batch", json=BATCH_PAYLOAD, headers={"X-API-Key": "churn-demo-token"})
 
     assert response.status_code == 200
     body = response.json()
@@ -111,6 +112,15 @@ def test_predict_batch_too_large(monkeypatch):
     entry = {"tenure_months": 1, "monthly_charges": 50.0, "total_charges": 50.0, "contract": "Month-to-month"}
     payload = {"inputs": [entry] * 101}
 
-    response = client.post("/predict_batch", json=payload)
+    response = client.post("/predict_batch", json=payload, headers={"X-API-Key": "churn-demo-token"})
 
     assert response.status_code == 413
+
+
+def test_predict_batch_no_model(monkeypatch):
+    monkeypatch.setattr(api_app, "model", None)
+
+    response = client.post("/predict_batch", json=BATCH_PAYLOAD, headers={"X-API-Key": "churn-demo-token"})
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Modèle indisponible"

@@ -100,3 +100,38 @@ def predict(payload: CustomerInput, api_key: str = Depends(verify_token)):
         metrics["n_errors"] += 1
         logger.error("Erreur pendant la prédiction : %s", e)
         raise HTTPException(status_code=500, detail="Une erreur interne est survenue pendant la prédiction.")
+
+
+@app.post("/predict_batch")
+def predict_batch(payload: BatchInput, _: str = Depends(verify_token)):
+    if len(payload.inputs) > 100:
+        raise HTTPException(status_code=413, detail="Trop d'entrées (max 100)")
+
+    if model is None:
+        metrics["n_errors"] += 1
+        raise HTTPException(status_code=503, detail="Modèle indisponible")
+
+    try:
+        results = []
+        for item in payload.inputs:
+            df = pd.DataFrame([item.model_dump()])
+            df_encoded = pd.get_dummies(df, drop_first=True)
+            df_aligned = df_encoded.reindex(columns=feature_columns, fill_value=0)
+            prediction = model.predict(df_aligned)[0]
+            confidence = model.predict_proba(df_aligned)[0].max()
+            results.append({
+                "prediction": int(prediction),
+                "label": "churn" if prediction == 1 else "no_churn",
+                "confidence": float(confidence),
+            })
+            metrics["n_predictions"] += 1
+
+        metrics["n_batch_requests"] += 1
+        metrics["n_batch_inputs_total"] += len(payload.inputs)
+        logger.info("batch prediction: n=%d", len(payload.inputs))
+
+        return {"n_inputs": len(payload.inputs), "predictions": results}
+    except Exception as e:
+        metrics["n_errors"] += 1
+        logger.error("Erreur pendant la prédiction batch : %s", e)
+        raise HTTPException(status_code=500, detail="Une erreur interne est survenue pendant la prédiction.")

@@ -7,3 +7,4 @@ mlruns/
 mlflow.db
 data/*
 artifacts/
+.pytest_cache/
