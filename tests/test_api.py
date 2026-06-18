@@ -49,7 +49,11 @@ def test_predict_valid_input(monkeypatch):
     )
 
     assert response.status_code == 200
-    assert "prediction" in response.json()
+    data = response.json()
+    assert "prediction" in data
+    assert data["prediction"] in [0, 1]
+    assert data["label"] in ["churn", "no_churn"]
+    assert 0.0 <= data["confidence"] <= 1.0
 
 
 def test_predict_rejects_missing_field():
