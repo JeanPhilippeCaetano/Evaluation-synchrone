@@ -16,6 +16,8 @@ FEATURE_COLUMNS_PATH = Path("artifacts/feature_columns.json")
 metrics = {
     "n_predictions": 0,
     "n_errors": 0,
+    "n_batch_requests": 0,
+    "n_batch_inputs_total": 0,
 }
 
 logging.basicConfig(level=logging.INFO)
@@ -37,6 +39,10 @@ class CustomerInput(BaseModel):
     monthly_charges: float = Field(..., ge=0)
     total_charges: float = Field(..., ge=0)
     contract: Literal["Month-to-month", "One year", "Two year"]
+
+
+class BatchInput(BaseModel):
+    inputs: list[CustomerInput]
 
 
 app = FastAPI(title="Churn Prediction API", version="1.0")
@@ -83,3 +89,43 @@ def predict(payload: CustomerInput):
         metrics["n_errors"] += 1
         logger.error("Erreur pendant la prédiction : %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/predict_batch")
+def predict_batch(payload: BatchInput):
+    if len(payload.inputs) > 100:
+        logger.warning("Batch rejeté : %d entrées soumises (max 100)", len(payload.inputs))
+        raise HTTPException(
+            status_code=413,
+            detail=f"Batch trop volumineux : {len(payload.inputs)} entrées (max 100)",
+        )
+
+    if model is None:
+        metrics["n_errors"] += 1
+        raise HTTPException(status_code=500, detail="Modèle indisponible")
+
+    predictions = []
+    try:
+        for i, item in enumerate(payload.inputs):
+            df = pd.DataFrame([item.model_dump()])
+            df_encoded = pd.get_dummies(df, drop_first=True)
+            df_aligned = df_encoded.reindex(columns=feature_columns, fill_value=0)
+
+            prediction = model.predict(df_aligned)[0]
+            confidence = model.predict_proba(df_aligned)[0].max()
+
+            predictions.append({
+                "prediction": int(prediction),
+                "label": "churn" if prediction == 1 else "no_churn",
+                "confidence": float(confidence),
+            })
+
+        metrics["n_batch_requests"] += 1
+        metrics["n_batch_inputs_total"] += len(payload.inputs)
+        logger.info("predict_batch: %d entrées traitées", len(payload.inputs))
+
+        return {"predictions": predictions, "n_inputs": len(payload.inputs)}
+    except Exception as e:
+        metrics["n_errors"] += 1
+        logger.error("Erreur pendant predict_batch (entrée %d) : %s", i, e)
+        raise HTTPException(status_code=500, detail=f"Erreur à l'entrée {i} : {e}")
