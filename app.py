@@ -1,15 +1,24 @@
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Literal
 
 import joblib
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security, Depends
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 
 
-API_TOKEN = "churn-demo-token"
+API_TOKEN = os.getenv("API_TOKEN", "churn-demo-token")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=True)
+
+def verify_token(api_key: str = Security(api_key_header)):
+    if api_key != API_TOKEN:
+        raise HTTPException(status_code=401, detail="Token invalide")
+    return api_key
+
 MODEL_PATH = Path("artifacts/model.pkl")
 FEATURE_COLUMNS_PATH = Path("artifacts/feature_columns.json")
 
@@ -53,12 +62,12 @@ def health():
 
 
 @app.get("/metrics")
-def get_metrics():
+def get_metrics(api_key: str = Depends(verify_token)):
     return metrics
 
 
 @app.post("/predict")
-def predict(payload: CustomerInput):
+def predict(payload: CustomerInput, api_key: str = Depends(verify_token)):
     if model is None:
         metrics["n_errors"] += 1
         raise HTTPException(status_code=500, detail="Modèle indisponible")
