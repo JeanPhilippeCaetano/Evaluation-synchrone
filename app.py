@@ -25,6 +25,8 @@ FEATURE_COLUMNS_PATH = Path("artifacts/feature_columns.json")
 metrics = {
     "n_predictions": 0,
     "n_errors": 0,
+    "n_batch_requests": 0,
+    "n_batch_inputs_total": 0,
 }
 
 logging.basicConfig(level=logging.INFO)
@@ -46,6 +48,10 @@ class CustomerInput(BaseModel):
     monthly_charges: float = Field(..., ge=0)
     total_charges: float = Field(..., ge=0)
     contract: Literal["Month-to-month", "One year", "Two year"]
+
+
+class BatchInput(BaseModel):
+    inputs: list[CustomerInput]
 
 
 app = FastAPI(title="Churn Prediction API", version="1.0")
