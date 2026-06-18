@@ -93,4 +93,4 @@ def predict(payload: CustomerInput, api_key: str = Depends(verify_token)):
     except Exception as e:
         metrics["n_errors"] += 1
         logger.error("Erreur pendant la prédiction : %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Une erreur interne est survenue pendant la prédiction.")
