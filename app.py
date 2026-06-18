@@ -105,6 +105,7 @@ def predict(payload: CustomerInput, api_key: str = Depends(verify_token)):
 @app.post("/predict_batch")
 def predict_batch(payload: BatchInput, _: str = Depends(verify_token)):
     if len(payload.inputs) > 100:
+        logger.warning("Batch rejeté : taille %d dépasse le maximum autorisé (100)", len(payload.inputs))
         raise HTTPException(status_code=413, detail="Trop d'entrées (max 100)")
 
     if model is None:

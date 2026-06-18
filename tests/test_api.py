@@ -124,3 +124,17 @@ def test_predict_batch_no_model(monkeypatch):
 
     assert response.status_code == 503
     assert response.json()["detail"] == "Modèle indisponible"
+
+
+def test_predict_batch_invalid_entry():
+    payload = {
+        "inputs": [
+            {"tenure_months": 12, "monthly_charges": 75.5, "total_charges": 906.0, "contract": "Month-to-month"},
+            {"tenure_months": 24, "monthly_charges": -10.0, "total_charges": 2160.0, "contract": "One year"},
+        ]
+    }
+    response = client.post("/predict_batch", json=payload, headers={"X-API-Key": "churn-demo-token"})
+
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    assert any(1 in err["loc"] for err in errors)
